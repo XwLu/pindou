@@ -135,10 +135,58 @@ def choose_font(size):
         return ImageFont.load_default()
 
 
+def choose_coordinate_font(size):
+    """优先使用较窄的粗体数字，让小格子的多位坐标更清晰。"""
+    for name in ("DejaVuSansCondensed-Bold.ttf",
+                 "/System/Library/Fonts/Supplemental/DIN Condensed Bold.ttf",
+                 "/System/Library/Fonts/Supplemental/Arial Narrow Bold.ttf",
+                 "arialbd.ttf"):
+        try:
+            return ImageFont.truetype(name, size)
+        except OSError:
+            continue
+    return choose_font(size)
+
+
+def coordinate_tile(number, cell_size):
+    """在独立图层中绘制坐标；必要时缩小字形，保证绝不越出格子。"""
+    text = str(number)
+    available = max(1, cell_size - 2)
+    # 按实际数字测量宽高，优先使用能放进网格的最大字号。
+    font = None
+    for size in range(max(1, cell_size - 2), 0, -1):
+        candidate = choose_coordinate_font(size)
+        box = candidate.getbbox(text)
+        font = candidate
+        if box[2] - box[0] <= available and box[3] - box[1] <= available:
+            break
+    box = font.getbbox(text)
+    glyph = Image.new("L", (max(1, box[2] - box[0]), max(1, box[3] - box[1])), 0)
+    ImageDraw.Draw(glyph).text((-box[0], -box[1]), text, font=font, fill=255)
+    # 极小格子或只有固定大小字体时，最终也必须约束在格内。
+    if glyph.width > available or glyph.height > available:
+        glyph.thumbnail((available, available), Image.Resampling.LANCZOS)
+    tile = Image.new("RGB", (cell_size, cell_size), (232, 232, 232))
+    x = (cell_size - glyph.width) // 2
+    y = (cell_size - glyph.height) // 2
+    tile.paste((45, 45, 45), (x, y), glyph)
+    return tile
+
+
 def render_blueprint(indices, colors, cell_size, labels=True):
-    """绘制色块、细网格以及居中的色号。"""
+    """绘制外围坐标格、内部色块、细网格及可选色号。"""
     height, width = indices.shape
-    image = Image.new("RGB", (width * cell_size, height * cell_size), "white")
+    canvas_width, canvas_height = (width + 2) * cell_size, (height + 2) * cell_size
+    # 灰底同时覆盖四角，四角不填写任何编号。
+    image = Image.new("RGB", (canvas_width, canvas_height), (232, 232, 232))
+    for x in range(1, width + 1):
+        tile = coordinate_tile(x, cell_size)
+        image.paste(tile, (x * cell_size, 0))
+        image.paste(tile, (x * cell_size, (height + 1) * cell_size))
+    for y in range(1, height + 1):
+        tile = coordinate_tile(y, cell_size)
+        image.paste(tile, (0, y * cell_size))
+        image.paste(tile, ((width + 1) * cell_size, y * cell_size))
     draw = ImageDraw.Draw(image)
     rgbs = [tuple(bytes.fromhex(c["hex"][1:])) for c in colors]
     text_colors = ["black" if relative_luminance(rgb) >= (0.0525 ** 0.5 - 0.05) else "white" for rgb in rgbs]
@@ -154,7 +202,8 @@ def render_blueprint(indices, colors, cell_size, labels=True):
     for y in range(height):
         for x in range(width):
             idx = int(indices[y, x])
-            x0, y0 = x * cell_size, y * cell_size
+            # 内部图案整体向右、向下各偏移一个坐标格。
+            x0, y0 = (x + 1) * cell_size, (y + 1) * cell_size
             draw.rectangle((x0, y0, x0 + cell_size - 1, y0 + cell_size - 1), fill=rgbs[idx])
             if labels:
                 label = colors[idx]["code"]
@@ -162,13 +211,15 @@ def render_blueprint(indices, colors, cell_size, labels=True):
                 tx = x0 + (cell_size - (box[2] - box[0])) / 2 - box[0]
                 ty = y0 + (cell_size - (box[3] - box[1])) / 2 - box[1]
                 draw.text((tx, ty), label, fill=text_colors[idx], font=font)
-    # 半透明灰色细线兼顾深色与浅色背景。
+    # 细线覆盖整个画布，包括四周坐标格及画布最外边缘。
     overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
     grid = ImageDraw.Draw(overlay)
-    for x in range(0, width * cell_size, cell_size):
-        grid.line((x, 0, x, height * cell_size - 1), fill=(80, 80, 80, 100))
-    for y in range(0, height * cell_size, cell_size):
-        grid.line((0, y, width * cell_size - 1, y), fill=(80, 80, 80, 100))
+    for x in range(0, canvas_width, cell_size):
+        grid.line((x, 0, x, canvas_height - 1), fill=(80, 80, 80, 100))
+    for y in range(0, canvas_height, cell_size):
+        grid.line((0, y, canvas_width - 1, y), fill=(80, 80, 80, 100))
+    grid.line((canvas_width - 1, 0, canvas_width - 1, canvas_height - 1), fill=(80, 80, 80, 100))
+    grid.line((0, canvas_height - 1, canvas_width - 1, canvas_height - 1), fill=(80, 80, 80, 100))
     return Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
 
 
@@ -199,7 +250,7 @@ def main(argv=None):
     parser.add_argument("--width", type=positive_int, default=80, help="网格宽度，默认 80")
     parser.add_argument("--height", type=positive_int, default=121, help="网格高度，默认 121")
     parser.add_argument("--csv", help="用量清单路径，默认与 PNG 同名")
-    parser.add_argument("--no-label", action="store_true", help="不绘制色号文字")
+    parser.add_argument("--no-label", action="store_true", help="不绘制色号文字，保留坐标标尺")
     parser.add_argument("--palette", default=str(BASE_DIR / "data" / "mard221.json"), help="色卡 JSON 路径")
     parser.add_argument("--dpi", type=positive_int, default=300, help="PNG DPI 元数据，默认 300")
     args = parser.parse_args(argv)
