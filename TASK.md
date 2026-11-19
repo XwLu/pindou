@@ -2,7 +2,7 @@
 
 ## 目标
 
-在 `/Users/looyifan/.openclaw/workspace-xiaosu/pindou` 下开发一个 Python 工具 `pindou.py`：
+在 `/Users/looyifan/.openclaw/workspace-linus/pindou` 下开发一个 Python 工具 `pindou.py`：
 输入一张原始图片，输出一张「带 MARD 221 标准色卡序号」的拼豆图纸。
 
 ## 具体行为
@@ -71,6 +71,6 @@ python3 pindou.py input.jpg -o output.png
 
 ## 环境
 
-- 项目根目录：`/Users/looyifan/.openclaw/workspace-xiaosu/pindou`（已是 git 仓库）
+- 项目根目录：`/Users/looyifan/.openclaw/workspace-linus/pindou`（已是 git 仓库）
 - 已预置：`data/mard221.json`（221 色）、`TASK.md`（本文件）
 - 请自行安装依赖后验证（可用 venv 或系统 pip，注意别污染其他项目）。

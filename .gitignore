@@ -3,5 +3,12 @@ __pycache__/
 .venv/
 tmp/
 
-# 预览图
-output/preview_*.png
+# 生成产物（图纸、CSV 属运行时输出，不入库）
+output/
+
+# 测试/历史素材（保留文档示例用的 sample.png）
+samples/*
+!samples/sample.png
+
+# 备份文件
+*.bak
