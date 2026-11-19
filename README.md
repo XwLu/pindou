@@ -190,7 +190,7 @@ python3 pindou.py samples/sample.png --width 40 --height 60 --dpi 150 --csv outp
 python3 test_ciede2000.py
 ```
 
-生成 `output/sample_pindou.png`、`output/sample_cell10.png` 和 `output/sample_no_label.png` 后，可运行 `python3 test_coordinate_grid.py` 检查坐标端点、边界和 CSV 颗数。
+`python3 test_coordinate_grid.py` 用 `tests/fixtures/` 里固化的 `sample_pindou`、`sample_cell10`、`sample_no_label` 三组 PNG+CSV 检查坐标端点、边界和 CSV 颗数，无需先生成产物。要更新夹具时，按需重跑对应命令后把产物拷进 `tests/fixtures/`。
 
 ## 目录
 

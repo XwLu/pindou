@@ -23,7 +23,7 @@ def reference(number, cell):
 
 
 for stem, cell in [('sample_pindou', 24), ('sample_cell10', 10), ('sample_no_label', 24)]:
-    with Image.open('output/' + stem + '.png') as source:
+    with Image.open('tests/fixtures/' + stem + '.png') as source:
         im = source.convert('RGB')
     assert im.size == (82 * cell, 123 * cell), (stem, im.size)
     positions = [(1, 0, 1), (80, 0, 80), (1, 122, 1), (80, 122, 80),
@@ -36,7 +36,7 @@ for stem, cell in [('sample_pindou', 24), ('sample_cell10', 10), ('sample_no_lab
     for x, y in [(0,0),(81,0),(0,122),(81,122)]:
         corner = im.crop((x*cell+1, y*cell+1, (x+1)*cell-1, (y+1)*cell-1))
         assert corner.getextrema() == ((232,232),)*3, (stem, x, y, '角落非空')
-    with open('output/' + stem + '.csv', encoding='utf-8-sig', newline='') as f:
+    with open('tests/fixtures/' + stem + '.csv', encoding='utf-8-sig', newline='') as f:
         total = sum(int(row['颗数']) for row in csv.DictReader(f))
     assert total == 9680, (stem, total)
     print(stem, '尺寸', im.size, '四边端点 1/80/121 像素吻合；四角为空；CSV', total)
@@ -49,7 +49,7 @@ for cell in (10, 24):
             assert all(tile.getpixel(p) == (232,232,232) for p in [(0,i),(cell-1,i),(i,0),(i,cell-1)]), (cell, value, i)
     print('cell-size', cell, '坐标 1..121 均未触及格边')
 
-with Image.open('output/sample_pindou.png') as a, Image.open('output/sample_no_label.png') as b:
+with Image.open('tests/fixtures/sample_pindou.png') as a, Image.open('tests/fixtures/sample_no_label.png') as b:
     for box in [(0,0,a.width,24), (0,a.height-24,a.width,a.height),
                 (0,0,24,a.height), (a.width-24,0,a.width,a.height)]:
         assert not ImageChops.difference(a.crop(box), b.crop(box)).getbbox()
